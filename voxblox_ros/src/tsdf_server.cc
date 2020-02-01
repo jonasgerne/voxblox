@@ -60,6 +60,8 @@ TsdfServer::TsdfServer(const ros::NodeHandle& nh,
 
   mesh_pub_ = nh_private_.advertise<voxblox_msgs::Mesh>("mesh", 1, true);
 
+  rosmesh_pub_ = nh_private_.advertise<mesh_msgs::TriangleMeshStamped>("rosmesh", 1, true);
+
   // Publishing/subscribing to a layer from another node (when using this as
   // a library, for example within a planner).
   tsdf_map_pub_ =
@@ -124,6 +126,8 @@ TsdfServer::TsdfServer(const ros::NodeHandle& nh,
       "publish_pointclouds", &TsdfServer::publishPointcloudsCallback, this);
   publish_tsdf_map_srv_ = nh_private_.advertiseService(
       "publish_map", &TsdfServer::publishTsdfMapCallback, this);
+  generate_mesh_tools_mesh_srv_ = nh_private_.advertiseService(
+             "generate_mesh_tools_mesh", &TsdfServer::generateMeshToolsCallback, this);
 
   // If set, use a timer to progressively integrate the mesh.
   double update_mesh_every_n_sec = 1.0;
@@ -558,6 +562,26 @@ bool TsdfServer::generateMesh() {
   return true;
 }
 
+bool TsdfServer::generateROSMesh() {
+    timing::Timer generate_mesh_timer("rosmesh/generate");
+
+    constexpr bool only_mesh_updated_blocks = false;
+    constexpr bool clear_updated_flag = true;
+    mesh_integrator_->generateMesh(only_mesh_updated_blocks,
+                                   clear_updated_flag);
+    generate_mesh_timer.Stop();
+
+    timing::Timer publish_mesh_timer("rosmesh/publish");
+    mesh_msgs::TriangleMeshStamped mesh_msg;
+    generateMeshToolsMsg(*mesh_layer_, color_mode_, &mesh_msg);
+    mesh_msg.header.frame_id = world_frame_;
+    rosmesh_pub_.publish(mesh_msg);
+
+    publish_mesh_timer.Stop();
+    ROS_INFO_STREAM("Mesh Timings: " << std::endl << timing::Timing::Print());
+    return true;
+}
+
 bool TsdfServer::saveMap(const std::string& file_path) {
   // Inheriting classes should add saving other layers to this function.
   return io::SaveLayer(tsdf_map_->getTsdfLayer(), file_path);
@@ -589,6 +613,13 @@ bool TsdfServer::generateMeshCallback(std_srvs::Empty::Request& /*request*/,
                                       /*response*/) {  // NOLINT
   return generateMesh();
 }
+
+bool TsdfServer::generateMeshToolsCallback(std_srvs::Empty::Request& /*request*/,
+                                           std_srvs::Empty::Response&
+                                           /*response*/) {  // NOLINT
+    return generateROSMesh();
+}
+
 
 bool TsdfServer::saveMapCallback(voxblox_msgs::FilePath::Request& request,
                                  voxblox_msgs::FilePath::Response&

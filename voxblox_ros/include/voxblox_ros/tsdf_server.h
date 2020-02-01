@@ -25,6 +25,8 @@
 #include <voxblox_msgs/FilePath.h>
 #include <voxblox_msgs/Mesh.h>
 
+#include <mesh_msgs/TriangleMeshStamped.h>
+
 #include "voxblox_ros/mesh_vis.h"
 #include "voxblox_ros/ptcloud_vis.h"
 #include "voxblox_ros/transformer.h"
@@ -71,6 +73,8 @@ class TsdfServer {
   virtual void updateMesh();
   /// Batch update.
   virtual bool generateMesh();
+  /// publish mesh as mesh_msgs TriangleMeshStamped msg
+  virtual bool generateROSMesh();
   // Publishes all available pointclouds.
   virtual void publishPointclouds();
   // Publishes the complete map
@@ -86,6 +90,8 @@ class TsdfServer {
                        voxblox_msgs::FilePath::Response& response);  // NOLINT
   bool generateMeshCallback(std_srvs::Empty::Request& request,       // NOLINT
                             std_srvs::Empty::Response& response);    // NOLINT
+  bool generateMeshToolsCallback(std_srvs::Empty::Request& request,       // NOLINT
+                                 std_srvs::Empty::Response& response);    // NOLINT
   bool publishPointcloudsCallback(
       std_srvs::Empty::Request& request,                             // NOLINT
       std_srvs::Empty::Response& response);                          // NOLINT
@@ -135,6 +141,7 @@ class TsdfServer {
 
   /// Publish markers for visualization.
   ros::Publisher mesh_pub_;
+  ros::Publisher rosmesh_pub_;
   ros::Publisher tsdf_pointcloud_pub_;
   ros::Publisher surface_pointcloud_pub_;
   ros::Publisher tsdf_slice_pub_;
@@ -154,6 +161,7 @@ class TsdfServer {
   ros::ServiceServer load_map_srv_;
   ros::ServiceServer publish_pointclouds_srv_;
   ros::ServiceServer publish_tsdf_map_srv_;
+  ros::ServiceServer generate_mesh_tools_mesh_srv_;
 
   /// Tools for broadcasting TFs.
   tf::TransformBroadcaster tf_broadcaster_;

@@ -34,7 +34,10 @@
 #include <voxblox/integrator/tsdf_integrator.h>
 #include <voxblox/mesh/mesh.h>
 #include <voxblox/mesh/mesh_layer.h>
+#include <voxblox/io/mesh_ply.h>
 #include <voxblox_msgs/Mesh.h>
+
+#include <mesh_msgs/TriangleMeshStamped.h>
 
 #include "voxblox_ros/conversions.h"
 
@@ -234,6 +237,68 @@ inline void generateVoxbloxMeshMsg(const MeshLayer::Ptr& mesh_layer,
   CHECK_NOTNULL(mesh_msg);
   CHECK(mesh_layer);
   generateVoxbloxMeshMsg(mesh_layer.get(), color_mode, mesh_msg);
+}
+
+inline void generateMeshToolsMsg(const MeshLayer& mesh_layer, ColorMode color_mode,
+                                 mesh_msgs::TriangleMeshStamped* mesh_msg_stmpd) {
+    mesh_msg_stmpd->header.stamp = ros::Time::now();
+    Mesh mesh(mesh_layer.block_size(), Point::Zero());
+
+    convertMeshLayerToMesh(mesh_layer, &mesh, true);
+
+    mesh_msgs::TriangleMesh mesh_msg;
+
+    size_t num_points = mesh.vertices.size();
+
+    mesh_msg.vertices.reserve(num_points);
+    if (mesh.hasNormals())
+        mesh_msg.vertex_normals.reserve(num_points);
+    if (mesh.hasColors())
+        mesh_msg.vertex_colors.reserve(num_points);
+    if (mesh.hasTriangles())
+        mesh_msg.triangles.reserve(mesh.indices.size()/3);
+    size_t vert_idx = 0;
+    for (const Point& vert : mesh.vertices) {
+        geometry_msgs::Point point_msg;
+        tf::pointEigenToMsg(vert.cast<double>(), point_msg);
+        mesh_msg.vertices.push_back(point_msg);
+
+        if (mesh.hasNormals()) {
+            const Point& normal = mesh.normals[vert_idx];
+            geometry_msgs::Point normal_msg;
+            tf::pointEigenToMsg(normal.cast<double>(), normal_msg);
+            mesh_msg.vertex_normals.push_back(normal_msg);
+        }
+        if (mesh.hasColors()) {
+            std_msgs::ColorRGBA color_msg;
+            const Color& color = mesh.colors[vert_idx];
+            color_msg.r = static_cast<int>(color.r);
+            color_msg.g = static_cast<int>(color.g);
+            color_msg.b = static_cast<int>(color.b);
+            color_msg.a = static_cast<int>(color.a);
+            mesh_msg.vertex_colors.push_back(color_msg);
+        }
+        vert_idx++;
+    }
+    if (mesh.hasTriangles()) {
+        for (size_t i = 0; i < mesh.indices.size(); i += 3) {
+            mesh_msgs::TriangleIndices indices_msg;
+            for (int j = 0; j < 3; j++) {
+                indices_msg.vertex_indices[j] = static_cast<uint32_t>(mesh.indices.at(i + j));
+            }
+            mesh_msg.triangles.push_back(indices_msg);
+        }
+    }
+    mesh_msg_stmpd->mesh = mesh_msg;
+}
+
+
+inline void generateMeshToolsMsg(const MeshLayer::Ptr& mesh_layer,
+                                 ColorMode color_mode,
+                                 mesh_msgs::TriangleMeshStamped* mesh_msg) {
+    CHECK_NOTNULL(mesh_msg);
+    CHECK(mesh_layer);
+    generateMeshToolsMsg(*mesh_layer, color_mode, mesh_msg);
 }
 
 inline void fillMarkerWithMesh(const MeshLayer::ConstPtr& mesh_layer,
