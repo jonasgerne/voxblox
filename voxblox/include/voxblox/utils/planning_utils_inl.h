@@ -46,6 +46,80 @@ void getSphereAroundPoint(const Layer<VoxelType>& layer, const Point& center,
   }
 }
 
+template<typename VoxelType>
+void
+getOrientedBoundingBox(const Layer <VoxelType> &layer, const Point &center, const float &dim_x, const float &dim_y,
+                       const float &dim_z, const float &theta, HierarchicalIndexMap *block_voxel_list) {
+    CHECK_NOTNULL(block_voxel_list);
+    float voxel_size = layer.voxel_size();
+    float voxel_size_inv = 1.0f / layer.voxel_size();
+    int voxels_per_side = layer.voxels_per_side();
+
+    const GlobalIndex center_index = getGridIndexFromPoint<GlobalIndex>(center, voxel_size_inv);
+    // dimensional extensions (dimension / 2) in voxels
+    const FloatingPoint ext_x_in_voxels = dim_x / (2.0f * voxel_size);
+    const FloatingPoint ext_y_in_voxels = dim_y / (2.0f * voxel_size);
+    const FloatingPoint ext_z_in_voxels = dim_z / (2.0f * voxel_size);
+
+    const Eigen::Matrix<FloatingPoint, 3, 3> rot_mat = Eigen::AngleAxisf(theta, Eigen::Vector3f::UnitZ()).matrix();
+
+    for (FloatingPoint x = -ext_x_in_voxels; x <= ext_x_in_voxels; x++) {
+        for (FloatingPoint y = -ext_y_in_voxels; y <= ext_y_in_voxels; y++) {
+            for (FloatingPoint z = -ext_z_in_voxels; z <= ext_z_in_voxels; z++) {
+                Point point_in_bb_voxel_space(x, y, z);
+                Point point_in_bb_voxel_space_rot = rot_mat * point_in_bb_voxel_space;
+                GlobalIndex voxel_offset_index(std::floor(point_in_bb_voxel_space_rot.x()),
+                                               std::floor(point_in_bb_voxel_space_rot.y()),
+                                               std::floor(point_in_bb_voxel_space_rot.z()));
+
+                BlockIndex block_index;
+                VoxelIndex voxel_index;
+
+                getBlockAndVoxelIndexFromGlobalVoxelIndex(voxel_offset_index + center_index, voxels_per_side,
+                                                          &block_index, &voxel_index);
+                (*block_voxel_list)[block_index].push_back(voxel_index);
+            }
+        }
+    }
+}
+
+template <typename VoxelType>
+void
+getOrientedBoundingBox(const Layer<VoxelType> &layer, const Eigen::Transform<float, 3, Eigen::Affine> &transform,
+                       const float &dim_x, const float &dim_y,
+                       const float &dim_z, HierarchicalIndexMap *block_voxel_list){
+    CHECK_NOTNULL(block_voxel_list);
+    float voxel_size = layer.voxel_size();
+    float voxel_size_inv = 1.0f / layer.voxel_size();
+    int voxels_per_side = layer.voxels_per_side();
+
+    const GlobalIndex center_index = getGridIndexFromPoint<GlobalIndex>(transform.translation(), voxel_size_inv);
+    // dimensional extensions (dimension / 2) in voxels
+    const FloatingPoint ext_x_in_voxels = dim_x / (2.0f * voxel_size);
+    const FloatingPoint ext_y_in_voxels = dim_y / (2.0f * voxel_size);
+    const FloatingPoint ext_z_in_voxels = dim_z / (2.0f * voxel_size);
+
+    for (FloatingPoint x = -ext_x_in_voxels; x <= ext_x_in_voxels; x++) {
+        for (FloatingPoint y = -ext_y_in_voxels; y <= ext_y_in_voxels; y++) {
+            for (FloatingPoint z = -ext_z_in_voxels; z <= ext_z_in_voxels; z++) {
+                Point point_in_bb_voxel_space(x, y, z);
+                Point point_in_bb_voxel_space_rot = transform.rotation() * point_in_bb_voxel_space;
+                GlobalIndex voxel_offset_index(std::floor(point_in_bb_voxel_space_rot.x()),
+                                               std::floor(point_in_bb_voxel_space_rot.y()),
+                                               std::floor(point_in_bb_voxel_space_rot.z()));
+
+                BlockIndex block_index;
+                VoxelIndex voxel_index;
+
+                getBlockAndVoxelIndexFromGlobalVoxelIndex(voxel_offset_index + center_index, voxels_per_side,
+                                                          &block_index, &voxel_index);
+                (*block_voxel_list)[block_index].push_back(voxel_index);
+            }
+        }
+    }
+}
+
+
 template <typename VoxelType>
 void getAndAllocateSphereAroundPoint(const Point& center, FloatingPoint radius,
                                      Layer<VoxelType>* layer,

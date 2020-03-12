@@ -250,13 +250,17 @@ inline void generateMeshToolsMsg(const MeshLayer& mesh_layer, ColorMode color_mo
 
     size_t num_points = mesh.vertices.size();
 
+    float normalization_factor{1.0f};
+
     mesh_msg.vertices.reserve(num_points);
     if (mesh.hasNormals())
         mesh_msg.vertex_normals.reserve(num_points);
-    if (mesh.hasColors())
+    if (mesh.hasColors()) {
         mesh_msg.vertex_colors.reserve(num_points);
+        normalization_factor = 1.0f / std::numeric_limits<uint8_t>::max();}
     if (mesh.hasTriangles())
         mesh_msg.triangles.reserve(mesh.indices.size()/3);
+
     size_t vert_idx = 0;
     for (const Point& vert : mesh.vertices) {
         geometry_msgs::Point point_msg;
@@ -272,10 +276,11 @@ inline void generateMeshToolsMsg(const MeshLayer& mesh_layer, ColorMode color_mo
         if (mesh.hasColors()) {
             std_msgs::ColorRGBA color_msg;
             const Color& color = mesh.colors[vert_idx];
-            color_msg.r = static_cast<int>(color.r);
-            color_msg.g = static_cast<int>(color.g);
-            color_msg.b = static_cast<int>(color.b);
-            color_msg.a = static_cast<int>(color.a);
+            // TODO: apply right color conversion, std_msgs::ColorRGBA uses float32
+            color_msg.r = color.r * normalization_factor;
+            color_msg.g = color.g * normalization_factor;
+            color_msg.b = color.b * normalization_factor;
+            color_msg.a = color.a * normalization_factor;
             mesh_msg.vertex_colors.push_back(color_msg);
         }
         vert_idx++;

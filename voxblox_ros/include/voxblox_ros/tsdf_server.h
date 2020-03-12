@@ -28,6 +28,7 @@
 #include <mesh_msgs/TriangleMeshStamped.h>
 
 #include "voxblox_ros/mesh_vis.h"
+#include "voxblox_ros/mesh_pcl.h"
 #include "voxblox_ros/ptcloud_vis.h"
 #include "voxblox_ros/transformer.h"
 
@@ -73,6 +74,7 @@ class TsdfServer {
   virtual void updateMesh();
   /// Batch update.
   virtual bool generateMesh();
+  virtual bool generateMeshWithPCL();
   /// publish mesh as mesh_msgs TriangleMeshStamped msg
   virtual bool generateROSMesh();
   // Publishes all available pointclouds.
@@ -141,6 +143,7 @@ class TsdfServer {
 
   /// Publish markers for visualization.
   ros::Publisher mesh_pub_;
+  ros::Publisher pcl_mesh_pub_;
   ros::Publisher rosmesh_pub_;
   ros::Publisher tsdf_pointcloud_pub_;
   ros::Publisher surface_pointcloud_pub_;

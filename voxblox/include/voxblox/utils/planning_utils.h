@@ -14,6 +14,39 @@ void getSphereAroundPoint(const Layer<VoxelType>& layer, const Point& center,
                           HierarchicalIndexMap* block_voxel_list);
 
 /**
+ * Gets the indices of all points within an oriented bounding box. The bounding box is defined by it's center, the dimensions in each direction
+ * and the yaw given by theta
+ * @tparam VoxelType
+ * @param layer
+ * @param center
+ * @param dim_x length along the bounding box's x-axis, center is at dim_x/2
+ * @param dim_y width of the bounding box
+ * @param dim_z height of the bounding box
+ * @param theta yaw angle of the bounding box
+ * @param block_voxel_list
+ */
+template <typename VoxelType>
+void getOrientedBoundingBox(const Layer<VoxelType>& layer, const Point& center, const float &dim_x, const float &dim_y,
+                            const float &dim_z, const float &theta, HierarchicalIndexMap *block_voxel_list);
+
+/**
+ * Gets the indices of all points within an oriented bounding box. The bounding box is defined by it's center, the dimensions in each direction
+ * and the yaw given by theta
+ * @tparam VoxelType
+ * @param layer
+ * @param transform affine transform specifying location and rotation of the bounding box
+ * @param dim_x length along the bounding box's x-axis, center is at dim_x/2
+ * @param dim_y width of the bounding box
+ * @param dim_z height of the bounding box
+ * @param block_voxel_list
+ */
+template <typename VoxelType>
+void
+getOrientedBoundingBox(const Layer<VoxelType> &layer, const Eigen::Transform<float, 3, Eigen::Affine> &transform,
+                       const float &dim_x, const float &dim_y,
+                       const float &dim_z, HierarchicalIndexMap *block_voxel_list);
+
+/**
  * Gets the indices of all points around a sphere, and also allocates any
  * blocks that don't already exist.
  */

@@ -1,5 +1,6 @@
 #include <minkindr_conversions/kindr_msg.h>
 #include <minkindr_conversions/kindr_tf.h>
+#include <voxblox_ros/mesh_pcl.h>
 #include "voxblox_ros/conversions.h"
 #include "voxblox_ros/ros_params.h"
 
@@ -59,6 +60,8 @@ TsdfServer::TsdfServer(const ros::NodeHandle& nh,
                                   &TsdfServer::insertPointcloud, this);
 
   mesh_pub_ = nh_private_.advertise<voxblox_msgs::Mesh>("mesh", 1, true);
+
+  pcl_mesh_pub_ = nh_private_.advertise<pcl_msgs::PolygonMesh>("pcl_mesh", 1, true);
 
   rosmesh_pub_ = nh_private_.advertise<mesh_msgs::TriangleMeshStamped>("rosmesh", 1, true);
 
@@ -560,6 +563,17 @@ bool TsdfServer::generateMesh() {
 
   ROS_INFO_STREAM("Mesh Timings: " << std::endl << timing::Timing::Print());
   return true;
+}
+
+bool TsdfServer::generateMeshWithPCL(){
+    generateMesh();
+    // Output as pcl mesh.
+    pcl::PolygonMesh polygon_mesh;
+    toConnectedPCLPolygonMesh(*mesh_layer_, world_frame_, &polygon_mesh);
+    pcl_msgs::PolygonMesh pcl_mesh_msg;
+    pcl_conversions::fromPCL(polygon_mesh, pcl_mesh_msg);
+    pcl_mesh_msg.header.stamp = ros::Time::now();
+    pcl_mesh_pub_.publish(pcl_mesh_msg);
 }
 
 bool TsdfServer::generateROSMesh() {

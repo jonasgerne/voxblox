@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="ISO-8859-15"?>
 <launch>
   <arg name="play_bag" default="true" />
-  <!-- <arg name="bag_file" default="/path/to/drive35.bag"/> -->
+  <arg name="bag_file" default="/data/drive1/KITTI/2011_09_26/2011_09_26_drive_0095_sync/tobag.bag"/> -->
   <arg name="process_every_nth_frame" default="1" />
   <arg name="voxel_size" default="0.25" />
   <arg name="scale" default="0.25" />

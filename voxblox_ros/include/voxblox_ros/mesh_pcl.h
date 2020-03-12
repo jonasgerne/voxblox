@@ -28,12 +28,16 @@
 #include <string>
 #include <vector>
 
+#include <boost/range/combine.hpp>
+#include <boost/foreach.hpp>
+
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
 
 #include <voxblox/core/common.h>
 #include <voxblox/mesh/mesh_layer.h>
+#include <voxblox/io/mesh_ply.h>
 
 namespace voxblox {
 
@@ -80,6 +84,59 @@ inline void toPCLPolygonMesh(
   polygon_mesh_ptr->polygons = polygons;
 }
 
+inline void toPCLPolygonMeshNormal(
+        const MeshLayer& mesh_layer, const std::string frame_id,
+        pcl::PolygonMesh* polygon_mesh_ptr,
+        const bool simplify_and_connect_mesh = true,
+        const FloatingPoint vertex_proximity_threshold = 1e-10) {
+    CHECK_NOTNULL(polygon_mesh_ptr);
+
+    // Constructing the vertices pointcloud
+    pcl::PointCloud<pcl::PointNormal> pointcloud;
+    std::vector<pcl::Vertices> polygons;
+
+    Mesh mesh;
+    convertMeshLayerToMesh(mesh_layer, &mesh, simplify_and_connect_mesh,
+                           vertex_proximity_threshold);
+
+    // add points
+    pointcloud.reserve(mesh.vertices.size());
+    CHECK_EQ(mesh.vertices.size(), mesh.normals.size());
+    Point point, normal;
+    // iterate over vertices and normals at the same time
+    BOOST_FOREACH(boost::tie(point, normal), boost::combine(mesh.vertices, mesh.normals))
+    {
+        pcl::PointNormal pt;
+        pt.x = static_cast<float>(point[0]);
+        pt.y = static_cast<float>(point[1]);
+        pt.z = static_cast<float>(point[2]);
+        pt.normal_x = static_cast<float>(normal[0]);
+        pt.normal_y = static_cast<float>(normal[1]);
+        pt.normal_z = static_cast<float>(normal[2]);
+        pointcloud.push_back(pt);
+    }
+
+    // add triangles
+    pcl::Vertices vertices_idx;
+    polygons.reserve(mesh.indices.size() / 3);
+    for (const VertexIndex& idx : mesh.indices) {
+        vertices_idx.vertices.push_back(idx);
+
+        if (vertices_idx.vertices.size() == 3) {
+            polygons.push_back(vertices_idx);
+            vertices_idx.vertices.clear();
+        }
+    }
+
+    // Converting to the pointcloud binary
+    pcl::PCLPointCloud2 pointcloud2;
+    pcl::toPCLPointCloud2(pointcloud, pointcloud2);
+    // Filling the mesh
+    polygon_mesh_ptr->header.frame_id = frame_id;
+    polygon_mesh_ptr->cloud = pointcloud2;
+    polygon_mesh_ptr->polygons = polygons;
+}
+
 inline void toSimplifiedPCLPolygonMesh(
     const MeshLayer& mesh_layer, const std::string frame_id,
     const FloatingPoint vertex_proximity_threshold,
@@ -94,7 +151,7 @@ inline void toConnectedPCLPolygonMesh(const MeshLayer& mesh_layer,
                                       pcl::PolygonMesh* polygon_mesh_ptr) {
   constexpr bool kSimplifiedAndConnectedMesh = true;
   constexpr FloatingPoint kVertexThreshold = 1e-10;
-  toPCLPolygonMesh(mesh_layer, frame_id, polygon_mesh_ptr,
+  toPCLPolygonMeshNormal(mesh_layer, frame_id, polygon_mesh_ptr,
                    kSimplifiedAndConnectedMesh, kVertexThreshold);
 }
 
